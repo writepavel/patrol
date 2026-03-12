@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Add `screenshot` method to `NativeAutomator` for capturing screenshots in web tests. (#XXXX)
 - Fix `tapOnNotification` on iOS physical devices to Open button when tapping on notification. (#2972)
 - Fix `takeCameraPhoto` do not accept location permission dialog on Pixel physical devices. (#2972)
 - Fix `takeCameraPhoto` on Android to use fallback button if done button is not visible. (#2974)
@@ -55,7 +56,8 @@ Read the article announcing Patrol 4.0 [here](https://leancode.co/blog/patrol-4-
     - `goBack`, `goForward`,
     - `acceptNextDialog`, `dismissNextDialog`,
     - `resizeWindow`,
-    - `setClipboard`, `getClipboard`.
+    - `setClipboard`, `getClipboard`,
+    - `screenshot`.
   - Introduce support for web-related flags:
     - `--web-results-dir`, `--web-report-dir`, `--web-reporter`,
     - `--web-timeout`, `--web-global-timeout`, `--web-retries`,

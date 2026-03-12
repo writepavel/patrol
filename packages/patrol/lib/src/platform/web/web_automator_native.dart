@@ -274,6 +274,16 @@ class WebAutomator implements web_automator.WebAutomator {
   }
 
   @override
+  Future<void> screenshot({String? name, String? path}) async {
+    await callPlaywright(
+      'screenshot',
+      {'name': name ?? 'screenshot', 'path': path},
+      logger: _config.logger,
+      patrolLog: _patrolLog,
+    );
+  }
+
+  @override
   Future<List<String>> verifyFileDownloads() async {
     final result = await callPlaywright(
       'verifyFileDownloads',

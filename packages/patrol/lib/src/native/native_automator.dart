@@ -696,4 +696,31 @@ class NativeAutomator {
   /// }
   /// ```
   Future<int> getOsVersion() => _platform.mobile.getOsVersion();
+
+  /// Takes a screenshot of the current page and saves it as a PNG file.
+  ///
+  /// This method is only available on web platform. For mobile, use
+  /// platform-specific screenshot solutions.
+  ///
+  /// The screenshot is saved to the specified [path] directory with the given
+  /// [name]. If [path] is not provided, defaults to `test-results/screenshots/`
+  /// relative to the current working directory. If [name] is not provided,
+  /// defaults to `screenshot`.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Simple screenshot with default name
+  /// await $.native.screenshot();
+  ///
+  /// // Screenshot with custom name
+  /// await $.native.screenshot(name: 'home-screen');
+  ///
+  /// // Screenshot with custom directory
+  /// await $.native.screenshot(
+  ///   name: 'home-screen',
+  ///   path: '/Users/me/my-app/test-results/screenshots',
+  /// );
+  /// ```
+  Future<void> screenshot({String? name, String? path}) =>
+      _platform.web.screenshot(name: name, path: path);
 }

@@ -20,4 +20,13 @@ class WebAutomator implements web_automator.WebAutomator {
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
     'This method is not available on current platform',
   );
+
+  /// Throws [UnimplementedError] because screenshot is not supported on non-web platforms.
+  @override
+  Future<void> screenshot({String? name, String? path}) async {
+    throw UnimplementedError(
+      'Screenshot is only available on web platform. '
+      'Use platform-specific screenshot solutions for mobile testing.',
+    );
+  }
 }

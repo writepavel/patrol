@@ -274,6 +274,10 @@ class IOSTapOnNotificationRequest {
   int? timeoutMillis;
 }
 
+class IOSTapBackToPreviousAppButtonRequest {
+  int? timeoutMillis;
+}
+
 class PermissionDialogVisibleResponse {
   late bool visible;
 }
@@ -356,6 +360,7 @@ abstract class MobileAutomator<IOSServer, AndroidServer, DartClient> {
   void openApp(OpenAppRequest request);
   void openQuickSettings(OpenQuickSettingsRequest request);
   void openUrl(OpenUrlRequest request);
+  void sendKeyboardEnter();
 
   // volume settings
   void pressVolumeUp();
@@ -387,6 +392,7 @@ abstract class MobileAutomator<IOSServer, AndroidServer, DartClient> {
 
   // other
   void setMockLocation(SetMockLocationRequest request);
+  void stopMockLocation();
 
   // TODO(bartekpacia): Move this RPC into a new PatrolNativeTestService service because it doesn't fit here
   void markPatrolAppServiceReady();
@@ -428,6 +434,9 @@ abstract class AndroidAutomator<AndroidServer, DartClient> {
   void pickMultipleImagesFromGallery(
     AndroidPickMultipleImagesFromGalleryRequest request,
   );
+
+  // permissions
+  void allowPermission();
 }
 
 abstract class IosAutomator<IOSServer, DartClient> {
@@ -445,6 +454,7 @@ abstract class IosAutomator<IOSServer, DartClient> {
   // notifications
   void closeHeadsUpNotification();
   void tapOnNotification(IOSTapOnNotificationRequest request);
+  void tapBackToPreviousAppButton(IOSTapBackToPreviousAppButtonRequest request);
 
   // permissions
   PermissionDialogVisibleResponse isPermissionDialogVisible(

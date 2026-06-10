@@ -31,6 +31,9 @@ import pl.leancode.patrol.contracts.Contracts.KeyboardBehavior
 import pl.leancode.patrol.contracts.Contracts.Notification
 import pl.leancode.patrol.contracts.Contracts.Point2D
 import pl.leancode.patrol.contracts.Contracts.Rectangle
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 import pl.leancode.patrol.R.string as s
 
@@ -76,6 +79,13 @@ class Automator private constructor() {
     private lateinit var uiDevice: UiDevice
     private lateinit var targetContext: Context
     private lateinit var uiAutomation: UiAutomation
+
+    private var mockLocationExecutor: ScheduledExecutorService? = null
+    private var mockLocationTask: java.util.concurrent.ScheduledFuture<*>? = null
+
+    @Volatile private var currentLatitude: Double = 0.0
+
+    @Volatile private var currentLongitude: Double = 0.0
 
     fun initialize() {
         if (!this::instrumentation.isInitialized) {
@@ -515,6 +525,15 @@ class Automator private constructor() {
         delay()
     }
 
+    fun sendKeyboardEnter() {
+        Logger.d("sendKeyboardEnter()")
+        val success = uiDevice.pressEnter()
+        if (!success) {
+            throw PatrolException("Could not send keyboard enter")
+        }
+        delay()
+    }
+
     fun getNotifications(): List<Notification> {
         Logger.d("getNotifications()")
 
@@ -659,12 +678,20 @@ class Automator private constructor() {
         val identifiers = arrayOf(
             "com.android.packageinstaller:id/permission_deny_button", // API <= 28
             "com.android.permissioncontroller:id/permission_deny_button", // API >= 29 (first invocation)
-            "com.android.permissioncontroller:id/permission_deny_and_dont_ask_again_button" // API >= 29 (second invocation)
+            "com.android.permissioncontroller:id/permission_deny_and_dont_ask_again_button", // API >= 29 (second invocation)
+            "android:id/button2" // for battery permission
         )
 
         val uiObject = waitForUiObjectByResourceId(*identifiers, timeout = timeoutMillis)
             ?: throw UiObjectNotFoundException("button to deny permission")
 
+        uiObject.click()
+    }
+
+    fun allowPermission() {
+        val resourceId = "android:id/button1"
+        val uiObject = waitForUiObjectByResourceId(resourceId, timeout = timeoutMillis)
+            ?: throw UiObjectNotFoundException("button to allow permission")
         uiObject.click()
     }
 
@@ -699,10 +726,21 @@ class Automator private constructor() {
     }
 
     fun setMockLocation(latitude: Double, longitude: Double, packageName: String) {
+        currentLatitude = latitude
+        currentLongitude = longitude
+
         executeShellCommand("appops set $packageName android:mock_location allow")
         val locationManager = targetContext.getSystemService(LOCATION_SERVICE) as LocationManager
 
         val mockLocationProvider = LocationManager.GPS_PROVIDER
+
+        try {
+            locationManager.removeTestProvider(mockLocationProvider)
+            Logger.d("Removed existing test provider")
+        } catch (e: Exception) {
+            Logger.d("No existing test provider to remove")
+        }
+
         locationManager.addTestProvider(
             mockLocationProvider,
             false,
@@ -717,14 +755,44 @@ class Automator private constructor() {
         )
 
         locationManager.setTestProviderEnabled(mockLocationProvider, true)
-        val mockLocation = Location(mockLocationProvider)
-        mockLocation.latitude = latitude
-        mockLocation.longitude = longitude
-        mockLocation.altitude = 0.0
-        mockLocation.accuracy = 1.0f
-        mockLocation.time = System.currentTimeMillis()
-        mockLocation.elapsedRealtimeNanos = System.nanoTime()
-        locationManager.setTestProviderLocation(mockLocationProvider, mockLocation)
+
+        // Cancel any existing scheduled task
+        mockLocationTask?.cancel(false)
+
+        if (mockLocationExecutor == null) {
+            mockLocationExecutor = Executors.newSingleThreadScheduledExecutor()
+        }
+
+        mockLocationTask = mockLocationExecutor?.scheduleAtFixedRate({
+            try {
+                val mockLocation = Location(mockLocationProvider)
+                mockLocation.latitude = currentLatitude
+                mockLocation.longitude = currentLongitude
+                mockLocation.altitude = 0.0
+                mockLocation.accuracy = 1.0f
+                mockLocation.time = System.currentTimeMillis()
+                mockLocation.elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
+
+                locationManager.setTestProviderLocation(mockLocationProvider, mockLocation)
+            } catch (e: Exception) {
+                Logger.e("Error updating mock location: ${e.message}")
+            }
+        }, 0, 500, TimeUnit.MILLISECONDS)
+    }
+
+    fun stopMockLocation() {
+        mockLocationTask?.cancel(false)
+        mockLocationTask = null
+        mockLocationExecutor?.shutdown()
+        mockLocationExecutor = null
+
+        try {
+            val locationManager = targetContext.getSystemService(LOCATION_SERVICE) as LocationManager
+            locationManager.removeTestProvider(LocationManager.GPS_PROVIDER)
+            Logger.d("Mock location stopped and provider removed")
+        } catch (e: Exception) {
+            Logger.e("Error stopping mock location: ${e.message}")
+        }
     }
 
     fun takeCameraPhoto(shutterButtonUiSelector: UiSelector, shutterButtonBySelector: BySelector, doneButtonUiSelector: UiSelector, doneButtonBySelector: BySelector, timeout: Long? = null) {

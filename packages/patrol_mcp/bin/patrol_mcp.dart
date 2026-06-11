@@ -183,24 +183,35 @@ Future<int> main(List<String> args) async {
             callback: (args, extra) async {
               final device = patrolSession.device;
 
-              // Web: use hot-restart screenshot helper test
+              // Web: use patrol test (develop doesn't support web)
               if (device != null &&
                   device.targetPlatform == TargetPlatform.web) {
                 const helperTest = 'patrol_test/screenshot_helper_test.dart';
-                patrolSession.sendCommand(PatrolCommand.hotRestart);
+                final projectRoot =
+                    Platform.environment['PROJECT_ROOT'] ?? Directory.current.path;
 
-                await patrolSession.startAndWait(
-                  helperTest,
-                  timeout: const Duration(seconds: 30),
+                final result = await Process.run(
+                  'patrol',
+                  ['test', '-d', 'chrome', '--web-headless=true', helperTest],
+                  workingDirectory: projectRoot,
                 );
+
+                if (result.exitCode != 0) {
+                  return CallToolResult(
+                    content: [
+                      TextContent(
+                        text:
+                            'Web screenshot test failed (exit ${result.exitCode}).\n'
+                            '${result.stderr}',
+                      ),
+                    ],
+                    isError: true,
+                  );
+                }
 
                 // Find the most recent screenshot file
                 final screenshotsDir = Directory(
-                  path.join(
-                    Directory.current.path,
-                    'test-results',
-                    'screenshots',
-                  ),
+                  path.join(projectRoot, 'test-results', 'screenshots'),
                 );
                 if (screenshotsDir.existsSync()) {
                   final entries = screenshotsDir.listSync()

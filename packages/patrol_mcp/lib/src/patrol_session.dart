@@ -597,7 +597,11 @@ final class PatrolSession {
 
   /// Start a web test via patrol test in the background.
   /// Returns immediately with a status message.
-  Future<String> startWebTest(String testFile, {Duration? timeout}) async {
+  Future<String> startWebTest(
+    String testFile, {
+    Duration? timeout,
+    bool headless = true,
+  }) async {
     if (_isRunning) {
       return 'A test is already running. Use quit or wait for it to finish.';
     }
@@ -607,9 +611,17 @@ final class PatrolSession {
     _testState = TestState.running;
     _outputs.clear();
 
+    final args = [
+      'test',
+      '-d',
+      'chrome',
+      if (headless) '--web-headless=true',
+      testFile,
+    ];
+
     final process = await io.Process.start(
       'patrol',
-      ['test', '-d', 'chrome', '--web-headless=true', testFile],
+      args,
       workingDirectory: flutterProjectPath,
     );
 

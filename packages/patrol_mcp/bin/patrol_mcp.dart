@@ -52,10 +52,12 @@ Duration _parseTimeout(num? timeoutMinutes) {
 class _PatrolRunArgs {
   _PatrolRunArgs.fromJson(Map<String, dynamic> json)
     : testFile = json['testFile'] as String,
-      timeout = _parseTimeout(json['timeoutMinutes'] as num?);
+      timeout = _parseTimeout(json['timeoutMinutes'] as num?),
+      headless = json['headless'] as bool? ?? true;
 
   final String testFile;
   final Duration timeout;
+  final bool headless;
 }
 
 Future<int> main(List<String> args) async {
@@ -128,6 +130,11 @@ Future<int> main(List<String> args) async {
                 'timeoutMinutes': JsonNumber(
                   description: 'Optional timeout in minutes (default: 5)',
                 ),
+                'headless': JsonBoolean(
+                  description:
+                      'Run in headless mode (default: true). '
+                      'Set to false to see the browser window.',
+                ),
               },
               required: ['testFile'],
             ),
@@ -141,6 +148,7 @@ Future<int> main(List<String> args) async {
                 final message = await patrolSession.startWebTest(
                   runArgs.testFile,
                   timeout: runArgs.timeout,
+                  headless: runArgs.headless,
                 );
                 return CallToolResult(
                   content: [TextContent(text: message)],

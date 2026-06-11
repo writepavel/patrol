@@ -139,8 +139,15 @@ Future<int> main(List<String> args) async {
               final projectRoot =
                   Platform.environment['PROJECT_ROOT'] ?? Directory.current.path;
 
-              // Web: use patrol test instead of patrol develop
-              if (patrolSession.device?.targetPlatform == TargetPlatform.web) {
+              // Check PATROL_FLAGS or device for web target
+              // (device is null before session starts, so check flags too)
+              final flags = Platform.environment['PATROL_FLAGS'] ?? '';
+              final isWeb = patrolSession.device?.targetPlatform ==
+                      TargetPlatform.web ||
+                  flags.contains('-d chrome') ||
+                  flags.contains('-d web');
+
+              if (isWeb) {
                 final result = await Process.run(
                   'patrol',
                   ['test', '-d', 'chrome', '--web-headless=true', runArgs.testFile],

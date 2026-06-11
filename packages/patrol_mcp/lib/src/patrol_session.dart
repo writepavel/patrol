@@ -207,11 +207,16 @@ final class PatrolSession {
   DevelopService? _developService;
   int? _testServerPort;
 
+  // Web test process (patrol test, not develop)
+  io.Process? _webTestProcess;
+  Completer<void>? _webTestCompleter;
+
   final _logStreaming = LogStreaming.instance;
 
   /// The device discovered by the last [startAndWait] call.
   Device? get device => _developService?.device;
   int? get testServerPort => _testServerPort;
+  bool get isRunning => _isRunning;
 
   /// Returns null if started successfully, or a warning message if blocked
   Future<String?> _start(String testFile) async {
@@ -421,6 +426,13 @@ final class PatrolSession {
     final logger = Logger('PatrolSession');
 
     if (command == PatrolCommand.quit) {
+      // Web test process
+      if (_webTestProcess != null) {
+        stopWebTest();
+        return 'Web test stopped';
+      }
+
+      // Mobile develop session
       final controller = _stdinController;
       if (!_isRunning || controller == null) {
         throw StateError('No active patrol session');
@@ -461,6 +473,17 @@ final class PatrolSession {
     throw StateError('Unknown command: ${command.value}');
   }
 
+  /// Stop a running web test process.
+  void stopWebTest() {
+    if (_webTestProcess != null) {
+      _webTestProcess!.kill();
+      _webTestProcess = null;
+      _testState = TestState.idle;
+      _isRunning = false;
+      _currentTestFile = null;
+    }
+  }
+
   List<String> _findRecentScreenshots() {
     try {
       final screenshotsDir = io.Directory(
@@ -498,14 +521,16 @@ final class PatrolSession {
 
   PatrolStatus getStatus() {
     final dev = _developService?.device;
+    final webDeviceName = _webTestProcess != null ? 'Chrome' : null;
     return PatrolStatus(
       isDevelopRunning: _isRunning,
       testState: _testState,
       output: _formatLogs(_outputs),
       currentTestFile: _currentTestFile,
-      deviceName: dev?.name,
-      deviceId: dev?.id,
-      devicePlatform: dev?.targetPlatform.name,
+      deviceName: dev?.name ?? webDeviceName,
+      deviceId: dev?.id ?? (webDeviceName != null ? 'chrome' : null),
+      devicePlatform: dev?.targetPlatform.name ??
+          (webDeviceName != null ? 'web' : null),
       screenshots: _findRecentScreenshots(),
     );
   }
@@ -568,6 +593,53 @@ final class PatrolSession {
       );
     }
     return _waitForFinish(timeout: timeout);
+  }
+
+  /// Start a web test via patrol test in the background.
+  /// Returns immediately with a status message.
+  Future<String> startWebTest(String testFile, {Duration? timeout}) async {
+    if (_isRunning) {
+      return 'A test is already running. Use quit or wait for it to finish.';
+    }
+
+    _isRunning = true;
+    _currentTestFile = testFile;
+    _testState = TestState.running;
+    _outputs.clear();
+
+    final process = await io.Process.start(
+      'patrol',
+      ['test', '-d', 'chrome', '--web-headless=true', testFile],
+      workingDirectory: flutterProjectPath,
+    );
+
+    _webTestProcess = process;
+    _webTestCompleter = Completer<void>();
+
+    // Capture stdout in background
+    process.stdout
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen(_pushOutput);
+
+    process.stderr
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen((line) {
+      _pushOutput('[stderr] $line');
+    });
+
+    // Wait for exit in background
+    unawaited(process.exitCode.then((code) {
+      _testState =
+          code == 0 ? TestState.finishedPassed : TestState.finishedFailed;
+      _isRunning = false;
+      _webTestProcess = null;
+      _webTestCompleter?.complete();
+      _webTestCompleter = null;
+    }));
+
+    return 'Web test started. Use status to check results.';
   }
 
   /// Automatically start log streaming and optionally launch terminal

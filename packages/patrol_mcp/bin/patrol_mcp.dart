@@ -5,8 +5,6 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:logging/logging.dart' as logging;
 import 'package:mcp_dart/mcp_dart.dart';
-import 'package:path/path.dart' as path;
-import 'package:patrol_cli/patrol_cli.dart' show TargetPlatform;
 import 'package:patrol_mcp/src/native_tree_service.dart';
 import 'package:patrol_mcp/src/patrol_session.dart';
 import 'package:patrol_mcp/src/screenshot_service.dart';
@@ -136,66 +134,17 @@ Future<int> main(List<String> args) async {
             annotations: const ToolAnnotations(title: 'Run Patrol Tests'),
             callback: (args, extra) async {
               final runArgs = _PatrolRunArgs.fromJson(args);
-              final projectRoot =
-                  Platform.environment['PROJECT_ROOT'] ?? Directory.current.path;
-
-              // Check PATROL_FLAGS or device for web target
-              // (device is null before session starts, so check flags too)
               final flags = Platform.environment['PATROL_FLAGS'] ?? '';
-              final isWeb = patrolSession.device?.targetPlatform ==
-                      TargetPlatform.web ||
-                  flags.contains('-d chrome') ||
-                  flags.contains('-d web');
+              final isWeb = flags.contains('-d chrome') || flags.contains('-d web');
 
               if (isWeb) {
-                try {
-                  final result = await Process.run(
-                    'patrol',
-                    [
-                      'test',
-                      '-d',
-                      'chrome',
-                      '--web-headless=true',
-                      runArgs.testFile,
-                    ],
-                    workingDirectory: projectRoot,
-                  ).timeout(runArgs.timeout);
-
-                  final output = result.stdout.toString();
-                  // Extract screenshot paths from output
-                  final screenshotPattern = RegExp(
-                    r'Screenshot saved:\s*(.+\.png)',
-                  );
-                  final screenshots =
-                      screenshotPattern.allMatches(output).map((m) => m.group(1)!).toList();
-
-                  final status = PatrolStatus(
-                    isDevelopRunning: false,
-                    testState: result.exitCode == 0
-                        ? TestState.finishedPassed
-                        : TestState.finishedFailed,
-                    output: 'Exit code: ${result.exitCode}\n'
-                        '${screenshots.isEmpty ? '' : 'Screenshots: ${screenshots.join(', ')}\n'}'
-                        'See command output for details.',
-                  );
-                  return CallToolResult(
-                    content: [TextContent(text: jsonEncode(status.toMap()))],
-                  );
-                } on TimeoutException {
-                  return CallToolResult(
-                    content: [
-                      TextContent(
-                        text: jsonEncode(
-                          PatrolStatus(
-                            isDevelopRunning: false,
-                            testState: TestState.finishedFailed,
-                            output: 'Test timed out after ${runArgs.timeout.inSeconds}s',
-                          ).toMap(),
-                        ),
-                      ),
-                    ],
-                  );
-                }
+                final message = await patrolSession.startWebTest(
+                  runArgs.testFile,
+                  timeout: runArgs.timeout,
+                );
+                return CallToolResult(
+                  content: [TextContent(text: message)],
+                );
               }
 
               final result = await patrolSession.startAndWait(
@@ -242,83 +191,57 @@ Future<int> main(List<String> args) async {
               readOnlyHint: true,
             ),
             callback: (args, extra) async {
-              final device = patrolSession.device;
+              // For web: find the most recent screenshot from patrol test runs
+              final flags = Platform.environment['PATROL_FLAGS'] ?? '';
+              if (flags.contains('-d chrome') || flags.contains('-d web')) {
+                final status = patrolSession.getStatus();
+                if (status.screenshots.isNotEmpty) {
+                  final latestPng = status.screenshots.last;
+                  final file = File(latestPng);
+                  if (file.existsSync()) {
+                    final bytes = await file.readAsBytes();
+                    return CallToolResult(
+                      content: [
+                        ImageContent(
+                          data: base64Encode(bytes),
+                          mimeType: 'image/png',
+                        ),
+                      ],
+                    );
+                  }
+                }
 
-              // Web: use patrol test (develop doesn't support web)
-              if (device != null &&
-                  device.targetPlatform == TargetPlatform.web) {
-                const helperTest = 'patrol_test/screenshot_helper_test.dart';
-                final projectRoot =
-                    Platform.environment['PROJECT_ROOT'] ?? Directory.current.path;
-
-                final result = await Process.run(
-                  'patrol',
-                  ['test', '-d', 'chrome', '--web-headless=true', helperTest],
-                  workingDirectory: projectRoot,
-                );
-
-                if (result.exitCode != 0) {
-                  return CallToolResult(
+                // No screenshots yet — run helper test in background
+                if (!patrolSession.isRunning) {
+                  await patrolSession.startWebTest(
+                    'patrol_test/screenshot_helper_test.dart',
+                  );
+                  return const CallToolResult(
                     content: [
                       TextContent(
                         text:
-                            'Web screenshot test failed (exit ${result.exitCode}).\n'
-                            '${result.stderr}',
+                            'Starting screenshot capture in the background. '
+                            'Use status to check progress and screenshots.',
                       ),
                     ],
-                    isError: true,
                   );
-                }
-
-                // Find the most recent screenshot file
-                final screenshotsDir = Directory(
-                  path.join(projectRoot, 'test-results', 'screenshots'),
-                );
-                if (screenshotsDir.existsSync()) {
-                  final entries = screenshotsDir.listSync()
-                      .whereType<Directory>()
-                      .toList()
-                    ..sort((a, b) => b.statSync().modified.compareTo(
-                          a.statSync().modified,
-                        ));
-
-                  if (entries.isNotEmpty) {
-                    final latestDir = entries.first;
-                    final pngFiles = latestDir.listSync()
-                        .whereType<File>()
-                        .where((f) => f.path.endsWith('.png'))
-                        .toList()
-                      ..sort((a, b) => b.statSync().modified.compareTo(
-                            a.statSync().modified,
-                          ));
-
-                    if (pngFiles.isNotEmpty) {
-                      final latestPng = pngFiles.first;
-                      final bytes = await latestPng.readAsBytes();
-                      return CallToolResult(
-                        content: [
-                          ImageContent(
-                            data: base64Encode(bytes),
-                            mimeType: 'image/png',
-                          ),
-                        ],
-                      );
-                    }
-                  }
                 }
 
                 return const CallToolResult(
                   content: [
                     TextContent(
                       text:
-                          'Web screenshot captured but file not found. '
-                          'Check test-results/screenshots/ directory.',
+                          'A test is already running. '
+                          'Use status to check for screenshots.',
                     ),
                   ],
                 );
               }
 
-              return ScreenshotService.handleScreenshotRequest(device);
+              // Mobile: use ScreenshotService
+              return ScreenshotService.handleScreenshotRequest(
+                patrolSession.device,
+              );
             },
           )
           ..registerTool(

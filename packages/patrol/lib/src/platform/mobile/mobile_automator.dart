@@ -64,6 +64,9 @@ abstract interface class MobileAutomator {
   /// Opens the URL specified by [url].
   Future<void> openUrl(String url);
 
+  /// Sends the keyboard Enter/Return action to the currently focused input.
+  Future<void> sendKeyboardEnter();
+
   /// Returns the first, topmost visible notification.
   ///
   /// Notification shade has to be opened with [openNotifications].
@@ -209,6 +212,11 @@ abstract interface class MobileAutomator {
     double longitude, {
     String? packageName,
   });
+
+  /// Stop mock location
+  ///
+  /// Stops the mock location updates that were started by [setMockLocation].
+  Future<void> stopMockLocation();
 
   /// Tells the AndroidJUnitRunner that PatrolAppService is ready to answer
   /// requests about the structure of Dart tests.

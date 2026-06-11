@@ -3,6 +3,7 @@ name: test android emulator webview
 on:
   workflow_dispatch:
   schedule:
+    # run this workflow daily at 23:00 UTC
     - cron: "0 23 * * *"
   pull_request_target:
     types: [opened, synchronize]
@@ -36,7 +37,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        flutter-version: ["3.32.x"]
+        flutter-version: ["3.38.x"]
         flutter-channel: ["stable"]
 
     defaults:
@@ -86,6 +87,12 @@ jobs:
       - name: Preload Flutter artifacts
         run: flutter precache --android
 
+      - name: Set up Melos and activate workspace
+        working-directory: .
+        run: |
+          dart pub global activate melos
+          melos bootstrap
+
       - name: Set up Patrol CLI
         working-directory: packages/patrol_cli
         run: dart pub global activate --source path . && patrol
@@ -106,7 +113,7 @@ jobs:
       - name: patrol build android
         env:
           MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
-        run: patrol build android --tags='webview && android' --exclude patrol_test/web/ --verbose 
+        run: patrol build android --tags='webview && android' --exclude patrol_test/web/,patrol_test/volume_test.dart,patrol_test/native_tests/volume_test.dart --verbose 
 
       - name: Upload APKs to emulator.wtf and wait for tests to finish
         id: tests_step

@@ -1,8 +1,8 @@
 import 'dart:collection';
 import 'dart:ui';
 
+import 'package:patrol/src/platform/selector.dart' show WebSelector;
 import 'package:patrol/src/platform/web/upload_file_data.dart';
-import 'package:patrol/src/platform/web/web_selector.dart';
 
 /// Provides functionality to interact with web applications.
 abstract interface class WebAutomator {
@@ -85,6 +85,16 @@ abstract interface class WebAutomator {
 
   /// Resizes the browser window.
   Future<void> resizeWindow({required Size size});
+
+  /// Takes a screenshot of the current page and saves it as a PNG file.
+  ///
+  /// The screenshot is saved to the specified [path] directory with the given
+  /// [name]. If [path] is not provided, defaults to `test-results/screenshots/`
+  /// relative to the current working directory. If [name] is not provided,
+  /// defaults to `screenshot`.
+  ///
+  /// See [NativeAutomator.screenshot] for more details and usage examples.
+  Future<void> screenshot({String? name, String? path});
 
   /// Returns a list of all files downloaded during the single test.
   Future<List<String>> verifyFileDownloads();

@@ -14,6 +14,7 @@ import { grantPermissions } from "./actions/grantPermissions"
 import { pressKey } from "./actions/pressKey"
 import { pressKeyCombo } from "./actions/pressKeyCombo"
 import { resizeWindow } from "./actions/resizeWindow"
+import { screenshot } from "./actions/screenshot"
 import { scrollTo } from "./actions/scrollTo"
 import { setClipboard } from "./actions/setClipboard"
 import { startTest } from "./actions/startTest"
@@ -44,4 +45,5 @@ export const actions = {
   getClipboard,
   setClipboard,
   resizeWindow,
+  screenshot,
 } as const

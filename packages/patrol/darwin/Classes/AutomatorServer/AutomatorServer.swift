@@ -60,6 +60,12 @@
       }
     }
 
+    func sendKeyboardEnter() throws {
+      return try runCatching {
+        try automator.sendKeyboardEnter()
+      }
+    }
+
     // MARK: General UI interaction
     func getNativeViews(
       request: IOSGetNativeViewsRequest
@@ -278,6 +284,14 @@
       }
     }
 
+    func tapBackToPreviousAppButton(request: IOSTapBackToPreviousAppButtonRequest) throws {
+      return try runCatching {
+        try automator.tapBackToPreviousAppButton(
+          withTimeout: request.timeoutMillis.map { TimeInterval(Double($0) / 1000.0) }
+        )
+      }
+    }
+
     // MARK: Permissions
 
     func isPermissionDialogVisible(
@@ -320,6 +334,12 @@
     func setMockLocation(request: SetMockLocationRequest) throws {
       return try runCatching {
         try automator.setMockLocation(latitude: request.latitude, longitude: request.longitude)
+      }
+    }
+
+    func stopMockLocation() throws {
+      return try runCatching {
+        try automator.stopMockLocation()
       }
     }
 

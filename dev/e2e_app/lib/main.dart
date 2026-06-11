@@ -1,10 +1,13 @@
 import 'package:app_links/app_links.dart';
 import 'package:e2e_app/applink_screen.dart';
+import 'package:e2e_app/at_finder_screen.dart';
 import 'package:e2e_app/camera_screen.dart';
+import 'package:e2e_app/external_app_screen.dart';
 import 'package:e2e_app/keys.dart';
 import 'package:e2e_app/loading_screen.dart';
 import 'package:e2e_app/location_screen.dart';
 import 'package:e2e_app/login_flow_screen.dart';
+import 'package:e2e_app/many_textfields_screen.dart';
 import 'package:e2e_app/map_screen.dart';
 import 'package:e2e_app/notifications_screen.dart';
 import 'package:e2e_app/overflow_screen.dart';
@@ -28,8 +31,12 @@ Future<void> main() async {
 Future<void> setUpTimezone() async {
   tz_data.initializeTimeZones();
   final timezone = await FlutterTimezone.getLocalTimezone();
-  final location = tz.getLocation(timezone);
-  tz.setLocalLocation(location);
+  try {
+    tz.setLocalLocation(tz.getLocation(timezone));
+    // Causing errors on patrol develop test on Linux
+  } on tz.LocationNotFoundException {
+    tz.setLocalLocation(tz.UTC);
+  }
 }
 
 class ExampleApp extends StatelessWidget {
@@ -135,26 +142,32 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('box 1'),
-                ListTile(
-                  onTap: () => _incrementCounter(10),
-                  key: K.tile1,
-                  title: const Text('Add'),
-                  trailing: IconButton(
-                    icon: const Icon(
-                      Icons.add,
-                      key: K.icon1,
-                      semanticLabel: 'Increment counter',
+                Material(
+                  color: Colors.transparent,
+                  child: ListTile(
+                    onTap: () => _incrementCounter(10),
+                    key: K.tile1,
+                    title: const Text('Add'),
+                    trailing: IconButton(
+                      icon: const Icon(
+                        Icons.add,
+                        key: K.icon1,
+                        semanticLabel: 'Increment counter',
+                      ),
+                      onPressed: _incrementCounter,
                     ),
-                    onPressed: _incrementCounter,
                   ),
                 ),
-                ListTile(
-                  onTap: () => _decrementCounter(10),
-                  key: K.tile2,
-                  title: const Text('Subtract'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.remove, key: K.icon2),
-                    onPressed: _decrementCounter,
+                Material(
+                  color: Colors.transparent,
+                  child: ListTile(
+                    onTap: () => _decrementCounter(10),
+                    key: K.tile2,
+                    title: const Text('Subtract'),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.remove, key: K.icon2),
+                      onPressed: _decrementCounter,
+                    ),
                   ),
                 ),
               ],
@@ -169,22 +182,28 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('box 2'),
-                ListTile(
-                  onTap: () => _incrementCounter(10),
-                  key: K.tile1,
-                  title: const Text('Add'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.add, key: K.icon1),
-                    onPressed: _incrementCounter,
+                Material(
+                  color: Colors.transparent,
+                  child: ListTile(
+                    onTap: () => _incrementCounter(10),
+                    key: K.tile1,
+                    title: const Text('Add'),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.add, key: K.icon1),
+                      onPressed: _incrementCounter,
+                    ),
                   ),
                 ),
-                ListTile(
-                  onTap: () => _decrementCounter(10),
-                  key: K.tile2,
-                  title: const Text('Subtract'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.remove, key: K.icon2),
-                    onPressed: _decrementCounter,
+                Material(
+                  color: Colors.transparent,
+                  child: ListTile(
+                    onTap: () => _decrementCounter(10),
+                    key: K.tile2,
+                    title: const Text('Subtract'),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.remove, key: K.icon2),
+                      onPressed: _decrementCounter,
+                    ),
                   ),
                 ),
               ],
@@ -195,6 +214,13 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
               MaterialPageRoute<void>(builder: (_) => const LoadingScreen()),
             ),
             child: const Text('Open loading screen'),
+          ),
+          TextButton(
+            key: K.atFinderScreenButton,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const AtFinderScreen()),
+            ),
+            child: const Text('Open at() finder screen'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).push(
@@ -287,6 +313,22 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
               MaterialPageRoute<void>(builder: (_) => const CameraScreen()),
             ),
             child: const Text('Open camera related features'),
+          ),
+          TextButton(
+            key: K.textfieldsScreenButton,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const TextfieldsScreen()),
+            ),
+            child: const Text('Open many textfields screen'),
+          ),
+          TextButton(
+            key: K.openExternalAppScreenButton,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const ExternalAppScreen(),
+              ),
+            ),
+            child: const Text('Open external app screen'),
           ),
           Text('EXAMPLE_KEY: ${const String.fromEnvironment('EXAMPLE_KEY')}'),
         ],

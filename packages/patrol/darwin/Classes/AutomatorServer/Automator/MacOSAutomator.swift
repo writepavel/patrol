@@ -276,6 +276,12 @@
       }
     }
 
+    func tapBackToPreviousAppButton(withTimeout timeout: TimeInterval?) throws {
+      try runAction("tapBackToPreviousAppButton") {
+        throw PatrolError.methodNotImplemented("tapBackToPreviousAppButton")
+      }
+    }
+
     func isPermissionDialogVisible(timeout: TimeInterval) throws -> Bool {
       try runAction("isPermissionDialogVisible") {
         throw PatrolError.methodNotImplemented("isPermissionDialogVisible")
@@ -315,6 +321,12 @@
     func setMockLocation(latitude: Double, longitude: Double) throws {
       try runAction("setMockLocation") {
         throw PatrolError.methodNotImplemented("setMockLocation")
+      }
+    }
+
+    func stopMockLocation() throws {
+      try runAction("stopMockLocation") {
+        throw PatrolError.methodNotImplemented("stopMockLocation")
       }
     }
 

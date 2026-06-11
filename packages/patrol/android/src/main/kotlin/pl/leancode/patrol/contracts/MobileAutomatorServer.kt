@@ -20,6 +20,7 @@ interface MobileAutomatorServer {
     fun openApp(request: Contracts.OpenAppRequest)
     fun openQuickSettings(request: Contracts.OpenQuickSettingsRequest)
     fun openUrl(request: Contracts.OpenUrlRequest)
+    fun sendKeyboardEnter()
     fun pressVolumeUp()
     fun pressVolumeDown()
     fun enableAirplaneMode()
@@ -39,6 +40,7 @@ interface MobileAutomatorServer {
     fun handlePermissionDialog(request: Contracts.HandlePermissionRequest)
     fun setLocationAccuracy(request: Contracts.SetLocationAccuracyRequest)
     fun setMockLocation(request: Contracts.SetMockLocationRequest)
+    fun stopMockLocation()
     fun markPatrolAppServiceReady()
     fun isVirtualDevice(): Contracts.IsVirtualDeviceResponse
     fun getOsVersion(): Contracts.GetOsVersionResponse
@@ -73,6 +75,10 @@ fun getMobileAutomatorRoutes(server: MobileAutomatorServer): RoutingHttpHandler 
     "openUrl" bind POST to {
       val body = json.fromJson(it.bodyString(), Contracts.OpenUrlRequest::class.java)
       server.openUrl(body)
+      Response(OK)
+    },
+    "sendKeyboardEnter" bind POST to {
+      server.sendKeyboardEnter()
       Response(OK)
     },
     "pressVolumeUp" bind POST to {
@@ -156,6 +162,10 @@ fun getMobileAutomatorRoutes(server: MobileAutomatorServer): RoutingHttpHandler 
     "setMockLocation" bind POST to {
       val body = json.fromJson(it.bodyString(), Contracts.SetMockLocationRequest::class.java)
       server.setMockLocation(body)
+      Response(OK)
+    },
+    "stopMockLocation" bind POST to {
+      server.stopMockLocation()
       Response(OK)
     },
     "markPatrolAppServiceReady" bind POST to {

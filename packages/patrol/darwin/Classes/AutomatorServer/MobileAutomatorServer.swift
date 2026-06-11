@@ -12,6 +12,7 @@ protocol MobileAutomatorServer {
     func openApp(request: OpenAppRequest) throws
     func openQuickSettings(request: OpenQuickSettingsRequest) throws
     func openUrl(request: OpenUrlRequest) throws
+    func sendKeyboardEnter() throws
     func pressVolumeUp() throws
     func pressVolumeDown() throws
     func enableAirplaneMode() throws
@@ -31,6 +32,7 @@ protocol MobileAutomatorServer {
     func handlePermissionDialog(request: HandlePermissionRequest) throws
     func setLocationAccuracy(request: SetLocationAccuracyRequest) throws
     func setMockLocation(request: SetMockLocationRequest) throws
+    func stopMockLocation() throws
     func markPatrolAppServiceReady() throws
     func isVirtualDevice() throws -> IsVirtualDeviceResponse
     func getOsVersion() throws -> GetOsVersionResponse
@@ -68,6 +70,11 @@ extension MobileAutomatorServer {
     private func openUrlHandler(request: HTTPRequest) throws -> HTTPResponse {
         let requestArg = try JSONDecoder().decode(OpenUrlRequest.self, from: request.body)
         try openUrl(request: requestArg)
+        return HTTPResponse(.ok)
+    }
+
+    private func sendKeyboardEnterHandler(request: HTTPRequest) throws -> HTTPResponse {
+        try sendKeyboardEnter()
         return HTTPResponse(.ok)
     }
 
@@ -175,6 +182,11 @@ extension MobileAutomatorServer {
         return HTTPResponse(.ok)
     }
 
+    private func stopMockLocationHandler(request: HTTPRequest) throws -> HTTPResponse {
+        try stopMockLocation()
+        return HTTPResponse(.ok)
+    }
+
     private func markPatrolAppServiceReadyHandler(request: HTTPRequest) throws -> HTTPResponse {
         try markPatrolAppServiceReady()
         return HTTPResponse(.ok)
@@ -224,6 +236,11 @@ extension MobileAutomatorServer {
             request in handleRequest(
                 request: request,
                 handler: openUrlHandler)
+        }
+        server.route(.POST, "sendKeyboardEnter") {
+            request in handleRequest(
+                request: request,
+                handler: sendKeyboardEnterHandler)
         }
         server.route(.POST, "pressVolumeUp") {
             request in handleRequest(
@@ -319,6 +336,11 @@ extension MobileAutomatorServer {
             request in handleRequest(
                 request: request,
                 handler: setMockLocationHandler)
+        }
+        server.route(.POST, "stopMockLocation") {
+            request in handleRequest(
+                request: request,
+                handler: stopMockLocationHandler)
         }
         server.route(.POST, "markPatrolAppServiceReady") {
             request in handleRequest(

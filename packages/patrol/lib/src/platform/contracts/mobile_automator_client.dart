@@ -63,6 +63,10 @@ class MobileAutomatorClient {
     return _sendRequest('openUrl', request.toJson());
   }
 
+  Future<void> sendKeyboardEnter() {
+    return _sendRequest('sendKeyboardEnter');
+  }
+
   Future<void> pressVolumeUp() {
     return _sendRequest('pressVolumeUp');
   }
@@ -146,6 +150,10 @@ class MobileAutomatorClient {
 
   Future<void> setMockLocation(SetMockLocationRequest request) {
     return _sendRequest('setMockLocation', request.toJson());
+  }
+
+  Future<void> stopMockLocation() {
+    return _sendRequest('stopMockLocation');
   }
 
   Future<void> markPatrolAppServiceReady() {

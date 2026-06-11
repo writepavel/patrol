@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:logging/logging.dart' as logging;
 import 'package:mcp_dart/mcp_dart.dart';
+import 'package:path/path.dart' as path;
+import 'package:patrol_cli/patrol_cli.dart' show TargetPlatform;
 import 'package:patrol_mcp/src/native_tree_service.dart';
 import 'package:patrol_mcp/src/patrol_session.dart';
 import 'package:patrol_mcp/src/screenshot_service.dart';
@@ -178,10 +180,73 @@ Future<int> main(List<String> args) async {
               title: 'Capture Screenshot',
               readOnlyHint: true,
             ),
-            callback: (args, extra) {
-              return ScreenshotService.handleScreenshotRequest(
-                patrolSession.device,
-              );
+            callback: (args, extra) async {
+              final device = patrolSession.device;
+
+              // Web: use hot-restart screenshot helper test
+              if (device != null &&
+                  device.targetPlatform == TargetPlatform.web) {
+                const helperTest = 'patrol_test/screenshot_helper_test.dart';
+                patrolSession.sendCommand(PatrolCommand.hotRestart);
+
+                await patrolSession.startAndWait(
+                  helperTest,
+                  timeout: const Duration(seconds: 30),
+                );
+
+                // Find the most recent screenshot file
+                final screenshotsDir = Directory(
+                  path.join(
+                    Directory.current.path,
+                    'test-results',
+                    'screenshots',
+                  ),
+                );
+                if (screenshotsDir.existsSync()) {
+                  final entries = screenshotsDir.listSync()
+                      .whereType<Directory>()
+                      .toList()
+                    ..sort((a, b) => b.statSync().modified.compareTo(
+                          a.statSync().modified,
+                        ));
+
+                  if (entries.isNotEmpty) {
+                    final latestDir = entries.first;
+                    final pngFiles = latestDir.listSync()
+                        .whereType<File>()
+                        .where((f) => f.path.endsWith('.png'))
+                        .toList()
+                      ..sort((a, b) => b.statSync().modified.compareTo(
+                            a.statSync().modified,
+                          ));
+
+                    if (pngFiles.isNotEmpty) {
+                      final latestPng = pngFiles.first;
+                      final bytes = await latestPng.readAsBytes();
+                      return CallToolResult(
+                        content: [
+                          ImageContent(
+                            data: base64Encode(bytes),
+                            mimeType: 'image/png',
+                          ),
+                        ],
+                      );
+                    }
+                  }
+                }
+
+                return const CallToolResult(
+                  content: [
+                    TextContent(
+                      text:
+                          'Web screenshot captured but file not found. '
+                          'Check test-results/screenshots/ directory.',
+                    ),
+                  ],
+                );
+              }
+
+              return ScreenshotService.handleScreenshotRequest(device);
             },
           )
           ..registerTool(

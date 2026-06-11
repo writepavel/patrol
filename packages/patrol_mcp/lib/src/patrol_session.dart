@@ -154,6 +154,7 @@ class PatrolStatus {
     this.deviceName,
     this.deviceId,
     this.devicePlatform,
+    this.screenshots = const [],
   });
 
   final bool isDevelopRunning;
@@ -164,6 +165,7 @@ class PatrolStatus {
   final String? deviceName;
   final String? deviceId;
   final String? devicePlatform;
+  final List<String> screenshots;
 
   String get summary => testState.summary;
 
@@ -175,6 +177,7 @@ class PatrolStatus {
     'deviceName': ?deviceName,
     'deviceId': ?deviceId,
     'devicePlatform': ?devicePlatform,
+    'screenshots': screenshots,
     'output': output,
     'summary': summary,
   };
@@ -458,6 +461,41 @@ final class PatrolSession {
     throw StateError('Unknown command: ${command.value}');
   }
 
+  List<String> _findRecentScreenshots() {
+    try {
+      final screenshotsDir = io.Directory(
+        io.Platform.environment['PROJECT_ROOT'] ?? io.Directory.current.path,
+      );
+      final testResults = io.Directory(
+        '${screenshotsDir.path}/test-results/screenshots',
+      );
+      if (!testResults.existsSync()) {
+        return [];
+      }
+
+      final entries = testResults.listSync()
+          .whereType<io.Directory>()
+          .toList()
+        ..sort((a, b) => b.statSync().modified.compareTo(
+              a.statSync().modified,
+            ));
+
+      if (entries.isEmpty) {
+        return [];
+      }
+
+      // Get PNG files from the most recent run
+      return entries.first.listSync()
+          .whereType<io.File>()
+          .where((f) => f.path.endsWith('.png'))
+          .map((f) => f.path)
+          .toList()
+        ..sort();
+    } catch (_) {
+      return [];
+    }
+  }
+
   PatrolStatus getStatus() {
     final dev = _developService?.device;
     return PatrolStatus(
@@ -468,6 +506,7 @@ final class PatrolSession {
       deviceName: dev?.name,
       deviceId: dev?.id,
       devicePlatform: dev?.targetPlatform.name,
+      screenshots: _findRecentScreenshots(),
     );
   }
 

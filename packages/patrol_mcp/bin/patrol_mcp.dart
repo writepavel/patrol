@@ -148,22 +148,54 @@ Future<int> main(List<String> args) async {
                   flags.contains('-d web');
 
               if (isWeb) {
-                final result = await Process.run(
-                  'patrol',
-                  ['test', '-d', 'chrome', '--web-headless=true', runArgs.testFile],
-                  workingDirectory: projectRoot,
-                );
+                try {
+                  final result = await Process.run(
+                    'patrol',
+                    [
+                      'test',
+                      '-d',
+                      'chrome',
+                      '--web-headless=true',
+                      runArgs.testFile,
+                    ],
+                    workingDirectory: projectRoot,
+                  ).timeout(runArgs.timeout);
 
-                final status = PatrolStatus(
-                  isDevelopRunning: false,
-                  testState: result.exitCode == 0
-                      ? TestState.finishedPassed
-                      : TestState.finishedFailed,
-                  output: result.stdout.toString(),
-                );
-                return CallToolResult(
-                  content: [TextContent(text: jsonEncode(status.toMap()))],
-                );
+                  final output = result.stdout.toString();
+                  // Extract screenshot paths from output
+                  final screenshotPattern = RegExp(
+                    r'Screenshot saved:\s*(.+\.png)',
+                  );
+                  final screenshots =
+                      screenshotPattern.allMatches(output).map((m) => m.group(1)!).toList();
+
+                  final status = PatrolStatus(
+                    isDevelopRunning: false,
+                    testState: result.exitCode == 0
+                        ? TestState.finishedPassed
+                        : TestState.finishedFailed,
+                    output: 'Exit code: ${result.exitCode}\n'
+                        '${screenshots.isEmpty ? '' : 'Screenshots: ${screenshots.join(', ')}\n'}'
+                        'See command output for details.',
+                  );
+                  return CallToolResult(
+                    content: [TextContent(text: jsonEncode(status.toMap()))],
+                  );
+                } on TimeoutException {
+                  return CallToolResult(
+                    content: [
+                      TextContent(
+                        text: jsonEncode(
+                          PatrolStatus(
+                            isDevelopRunning: false,
+                            testState: TestState.finishedFailed,
+                            output: 'Test timed out after ${runArgs.timeout.inSeconds}s',
+                          ).toMap(),
+                        ),
+                      ),
+                    ],
+                  );
+                }
               }
 
               final result = await patrolSession.startAndWait(

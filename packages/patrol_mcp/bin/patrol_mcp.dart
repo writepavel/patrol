@@ -136,6 +136,28 @@ Future<int> main(List<String> args) async {
             annotations: const ToolAnnotations(title: 'Run Patrol Tests'),
             callback: (args, extra) async {
               final runArgs = _PatrolRunArgs.fromJson(args);
+              final projectRoot =
+                  Platform.environment['PROJECT_ROOT'] ?? Directory.current.path;
+
+              // Web: use patrol test instead of patrol develop
+              if (patrolSession.device?.targetPlatform == TargetPlatform.web) {
+                final result = await Process.run(
+                  'patrol',
+                  ['test', '-d', 'chrome', '--web-headless=true', runArgs.testFile],
+                  workingDirectory: projectRoot,
+                );
+
+                final status = PatrolStatus(
+                  isDevelopRunning: false,
+                  testState: result.exitCode == 0
+                      ? TestState.finishedPassed
+                      : TestState.finishedFailed,
+                  output: result.stdout.toString(),
+                );
+                return CallToolResult(
+                  content: [TextContent(text: jsonEncode(status.toMap()))],
+                );
+              }
 
               final result = await patrolSession.startAndWait(
                 runArgs.testFile,

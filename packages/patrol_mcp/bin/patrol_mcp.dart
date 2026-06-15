@@ -331,7 +331,6 @@ Future<int> main(List<String> args) async {
             callback: (args, extra) {
               return NativeTreeService.handleGetNativeTreeRequest(
                 patrolSession.device,
-                patrolSession.testServerPort,
               );
             },
           );

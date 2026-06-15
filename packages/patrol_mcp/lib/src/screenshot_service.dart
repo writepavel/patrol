@@ -93,10 +93,32 @@ abstract final class ScreenshotService {
   static Future<Uint8List> _captureScreenshot(
     ScreenshotPlatform platform,
   ) async {
+    if (platform == ScreenshotPlatform.ios) {
+      // Use temp file to avoid /dev/stdout permission issues
+      final tempDir = Directory.systemTemp.createTempSync('patrol_screenshot_');
+      final tempFile = '${tempDir.path}/screenshot.png';
+      try {
+        final result = await Process.run('xcrun', [
+          'simctl',
+          'io',
+          'booted',
+          'screenshot',
+          '--type=png',
+          tempFile,
+        ]);
+        if (result.exitCode != 0) {
+          throw Exception('Failed to capture screenshot: ${result.stderr}');
+        }
+        final bytes = await File(tempFile).readAsBytes();
+        _validatePng(bytes);
+        return _resizeImage(bytes);
+      } finally {
+        tempDir.deleteSync(recursive: true);
+      }
+    }
+
     final process = await Process.start(platform.command, platform.args);
-
     final bytes = await process.stdout.expand((chunk) => chunk).toList();
-
     final exitCode = await process.exitCode;
     if (exitCode != 0) {
       final stderr = await process.stderr.transform(utf8.decoder).join();

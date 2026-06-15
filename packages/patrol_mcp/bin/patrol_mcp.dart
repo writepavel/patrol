@@ -9,7 +9,36 @@ import 'package:patrol_mcp/src/native_tree_service.dart';
 import 'package:patrol_mcp/src/patrol_session.dart';
 import 'package:patrol_mcp/src/screenshot_service.dart';
 
-/// Version of patrol_mcp. Must be kept in sync with pubspec.yaml.
+/// Detect a booted iOS simulator and return its UDID.
+/// Returns null if no booted simulator is found.
+Future<String?> _getBootedSimulatorUdid() async {
+  try {
+    final result = await Process.run(
+      'xcrun',
+      ['simctl', 'list', 'devices', 'booted', '--json'],
+    );
+    if (result.exitCode != 0) {
+      return null;
+    }
+
+    final json = jsonDecode(result.stdout as String) as Map<String, dynamic>;
+    for (final runtime in (json['devices'] as Map<String, dynamic>).values) {
+      for (final device in (runtime as List<dynamic>)) {
+        final d = device as Map<String, dynamic>;
+        final state = d['state'];
+        if (state is String && state == 'Booted') {
+          final udid = d['udid'];
+          if (udid is String) {
+            return udid;
+          }
+        }
+      }
+    }
+  } catch (_) {
+    return null;
+  }
+  return null;
+}
 const version = '0.1.4';
 
 const double _defaultTimeoutMinutes = 5;
@@ -187,7 +216,13 @@ Future<int> main(List<String> args) async {
             ),
             callback: (args, extra) async {
               final testFile = args['testFile'] as String;
-              final status = await patrolSession.startDevelop(testFile);
+              // Detect booted simulator and use its UDID as device flag
+              final bootedResult = await _getBootedSimulatorUdid();
+              final deviceFlag = bootedResult ?? 'ios';
+              final status = await patrolSession.startDevelop(
+                testFile,
+                deviceId: deviceFlag,
+              );
               return CallToolResult(
                 content: [TextContent(text: jsonEncode(status.toMap()))],
               );

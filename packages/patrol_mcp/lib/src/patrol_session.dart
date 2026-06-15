@@ -219,7 +219,7 @@ final class PatrolSession {
   bool get isRunning => _isRunning;
 
   /// Returns null if started successfully, or a warning message if blocked
-  Future<String?> _start(String testFile) async {
+  Future<String?> _start(String testFile, {String? deviceId}) async {
     if (_isRunning) {
       if (_currentTestFile != testFile) {
         return 'Patrol session is already running "$_currentTestFile". '
@@ -245,6 +245,9 @@ final class PatrolSession {
         (additionalFlags.isNotEmpty
               ? additionalFlags.split(RegExp(r'\s+'))
               : <String>[])
+          // If deviceId is provided, replace any existing -d flag
+          ..removeWhere((f) => f == '-d' || f == 'ios' || f == 'android')
+          ..addAll(deviceId != null ? ['-d', deviceId] : [])
           // Skip compatibility checking in MCP context for speed.
           ..add('--no-check-compatibility');
 
@@ -597,9 +600,10 @@ final class PatrolSession {
 
   /// Start a develop session and return immediately (don't wait for test completion).
   /// The session stays alive until `quit` is called.
+  /// If [deviceId] is provided, it's used as the target device (overrides PATROL_FLAGS).
   /// Returns a [PatrolStatus] with any warning if blocked.
-  Future<PatrolStatus> startDevelop(String testFile) async {
-    final warning = await _start(testFile);
+  Future<PatrolStatus> startDevelop(String testFile, {String? deviceId}) async {
+    final warning = await _start(testFile, deviceId: deviceId);
     final status = getStatus();
     if (warning != null) {
       return PatrolStatus(

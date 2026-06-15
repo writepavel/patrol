@@ -579,8 +579,9 @@ final class PatrolSession {
   Future<PatrolStatus> startAndWait(
     String testFile, {
     Duration? timeout,
+    String? deviceId,
   }) async {
-    final warning = await _start(testFile);
+    final warning = await _start(testFile, deviceId: deviceId);
     if (warning != null) {
       // Return current status with warning (blocked by different test)
       final status = getStatus();

@@ -184,9 +184,12 @@ Future<int> main(List<String> args) async {
                 );
               }
 
+              // Auto-detect booted simulator for mobile tests
+              final bootedUdid = await _getBootedSimulatorUdid();
               final result = await patrolSession.startAndWait(
                 runArgs.testFile,
                 timeout: runArgs.timeout,
+                deviceId: bootedUdid,
               );
               return CallToolResult(
                 content: [TextContent(text: jsonEncode(result.toMap()))],

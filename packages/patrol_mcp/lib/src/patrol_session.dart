@@ -595,6 +595,27 @@ final class PatrolSession {
     return _waitForFinish(timeout: timeout);
   }
 
+  /// Start a develop session and return immediately (don't wait for test completion).
+  /// The session stays alive until `quit` is called.
+  /// Returns a [PatrolStatus] with any warning if blocked.
+  Future<PatrolStatus> startDevelop(String testFile) async {
+    final warning = await _start(testFile);
+    final status = getStatus();
+    if (warning != null) {
+      return PatrolStatus(
+        isDevelopRunning: status.isDevelopRunning,
+        testState: status.testState,
+        output: status.output,
+        currentTestFile: status.currentTestFile,
+        warning: warning,
+        deviceName: status.deviceName,
+        deviceId: status.deviceId,
+        devicePlatform: status.devicePlatform,
+      );
+    }
+    return status;
+  }
+
   /// Start a web test via patrol test in the background.
   /// Returns immediately with a status message.
   Future<String> startWebTest(

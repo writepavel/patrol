@@ -165,6 +165,35 @@ Future<int> main(List<String> args) async {
             },
           )
           ..registerTool(
+            'develop',
+            description:
+                'Start a patrol develop session for interactive use. '
+                'The session stays alive until quit is called. '
+                'Use native-tree and screenshot while the session is active.',
+            inputSchema: const ToolInputSchema(
+              properties: {
+                'testFile': JsonString(
+                  description:
+                      'Path to the test file, relative to PROJECT_ROOT '
+                      "(e.g., 'integration_test/example_test.dart' or "
+                      "'patrol_test/scenarios/login_test.dart'). "
+                      'Do NOT include the PROJECT_ROOT prefix in the path.',
+                ),
+              },
+              required: ['testFile'],
+            ),
+            annotations: const ToolAnnotations(
+              title: 'Start Patrol Develop Session',
+            ),
+            callback: (args, extra) async {
+              final testFile = args['testFile'] as String;
+              final status = await patrolSession.startDevelop(testFile);
+              return CallToolResult(
+                content: [TextContent(text: jsonEncode(status.toMap()))],
+              );
+            },
+          )
+          ..registerTool(
             'quit',
             description: 'Quit the active patrol session gracefully',
             annotations: const ToolAnnotations(title: 'Quit Patrol'),

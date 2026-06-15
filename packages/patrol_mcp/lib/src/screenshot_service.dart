@@ -38,20 +38,14 @@ abstract final class ScreenshotService {
 
   static Future<CallToolResult> handleScreenshotRequest(Device? device) async {
     try {
-      if (device == null) {
-        return const CallToolResult(
-          content: [
-            TextContent(
-              text:
-                  'No active patrol session. '
-                  'Run a test first so the device platform can be detected.',
-            ),
-          ],
-          isError: true,
-        );
+      // Determine platform: from device or auto-detect booted simulator
+      ScreenshotPlatform platform;
+      if (device != null) {
+        platform = ScreenshotPlatform.fromDevice(device);
+      } else {
+        platform = await _detectPlatform();
       }
 
-      final platform = ScreenshotPlatform.fromDevice(device);
       final bytes = await _captureScreenshot(platform);
       final base64Data = base64Encode(bytes);
 
@@ -59,13 +53,41 @@ abstract final class ScreenshotService {
         content: [ImageContent(data: base64Data, mimeType: 'image/png')],
       );
     } catch (e) {
-      // Catches both Exception and Error (e.g. ArgumentError from
-      // unsupported platform).
       return CallToolResult(
         content: [TextContent(text: 'Failed to capture screenshot: $e')],
         isError: true,
       );
     }
+  }
+
+  static Future<ScreenshotPlatform> _detectPlatform() async {
+    // Check for booted iOS simulator
+    try {
+      final result = await Process.run('xcrun', [
+        'simctl',
+        'list',
+        'devices',
+        'booted',
+      ]);
+      if (result.exitCode == 0 &&
+          (result.stdout as String).contains('Booted')) {
+        return ScreenshotPlatform.ios;
+      }
+    } catch (_) {}
+
+    // Check for Android emulator
+    try {
+      final result = await Process.run('adb', ['devices']);
+      if (result.exitCode == 0 &&
+          (result.stdout as String).contains('emulator')) {
+        return ScreenshotPlatform.android;
+      }
+    } catch (_) {}
+
+    throw Exception(
+      'No active patrol session and no booted simulator/emulator found. '
+      'Boot an iOS simulator or start a test first.',
+    );
   }
 
   static Future<Uint8List> _captureScreenshot(

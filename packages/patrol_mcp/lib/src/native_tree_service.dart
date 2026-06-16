@@ -13,7 +13,34 @@ abstract final class NativeTreeService {
     Device? device,
   ) async {
     try {
+      // First, try to query the native PatrolServer directly (port 8081).
+      // The server may be running from a standalone XCUITest keepalive session
+      // or from a patrol develop session.
       if (device == null) {
+        try {
+          final tree = await _fetchNativeTree();
+          if (_isTreeEmpty(tree)) {
+            return const CallToolResult(
+              content: [
+                TextContent(
+                  text:
+                      'Native automator not ready yet. '
+                      'Please wait a moment and try again.',
+                ),
+              ],
+            );
+          }
+          final trimmed = _trimTree(tree);
+          return CallToolResult(
+            content: [
+              TextContent(
+                text: const JsonEncoder.withIndent('  ').convert(trimmed),
+              ),
+            ],
+          );
+        } catch (_) {
+          // No direct server access — try through develop session if available
+        }
         return const CallToolResult(
           content: [
             TextContent(
